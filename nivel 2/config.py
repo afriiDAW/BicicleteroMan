@@ -1,0 +1,12 @@
+import pygame
+
+ANCHO, ALTO = 800, 600
+
+BLANCO = (255, 255, 255)
+ROJO = (255, 0, 0)
+VERDE = (0, 255, 0)
+AZUL = (0, 0, 255)
+NEGRO = (0, 0, 0)
+
+NUM_CARRILES = 6
+ALTURA_CARRIL = ALTO // NUM_CARRILES
