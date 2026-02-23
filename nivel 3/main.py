@@ -17,7 +17,8 @@ class Player:
 		self.x = WIDTH // 2 - self.width // 2
 		self.y = HEIGHT - self.height - 30
 		self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
-		self.speed = 6
+		# velocidad máxima reducida
+		self.speed = 5
 
 	def handle_input(self, keys):
 		if keys[pygame.K_LEFT]:
@@ -34,8 +35,9 @@ class Player:
 			self.rect.left = ROAD_X + 10
 		if self.rect.right > ROAD_X + ROAD_WIDTH - 10:
 			self.rect.right = ROAD_X + ROAD_WIDTH - 10
-		if self.rect.top < 10:
-			self.rect.top = 10
+		# permitir que el jugador alcance el borde superior (y detectarlo en el bucle principal)
+		if self.rect.top < 0:
+			self.rect.top = 0
 		if self.rect.bottom > HEIGHT - 10:
 			self.rect.bottom = HEIGHT - 10
 
@@ -55,15 +57,56 @@ class Obstacle:
 		self.width = random.randint(30, 80)
 		self.height = random.randint(30, 80)
 		self.x = random.randint(ROAD_X + 10, ROAD_X + ROAD_WIDTH - self.width - 10)
-		self.y = -self.height
+		# y se establecerá desde el generador para posicionar obstáculos estáticos
+		self.y = 0
 		self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
-		self.speed = random.uniform(3.0, 6.0)
 
 	def update(self):
-		self.rect.y += self.speed
+		# obstáculos estáticos: no se mueven
+		pass
 
 	def draw(self, surface):
 		pygame.draw.rect(surface, (139, 69, 19), self.rect)
+
+
+class Dog:
+	def __init__(self, player):
+		self.width = 40
+		self.height = 40
+		# aparecer aleatoriamente a la izquierda o derecha del nivel
+		side = random.choice(('left', 'right'))
+		if side == 'left':
+			self.x = ROAD_X + 10
+		else:
+			self.x = ROAD_X + ROAD_WIDTH - self.width - 10
+		# posición vertical aleatoria dentro del área de juego
+		self.y = random.randint(60, HEIGHT - self.height - 60)
+		self.rect = pygame.Rect(self.x, self.y, self.width, self.height)
+		# velocidad máxima igual a la del jugador (reducida)
+		self.speed = player.speed
+
+	def update(self, target_rect):
+		# moverse hacia el jugador, con paso máximo igual a self.speed
+		dx = target_rect.centerx - self.rect.centerx
+		dy = target_rect.centery - self.rect.centery
+		dist = (dx*dx + dy*dy) ** 0.5
+		if dist <= 0:
+			return
+		step = min(self.speed, dist)
+		self.rect.x += int(dx / dist * step)
+		self.rect.y += int(dy / dist * step)
+		# limitar a la carretera
+		if self.rect.left < ROAD_X + 10:
+			self.rect.left = ROAD_X + 10
+		if self.rect.right > ROAD_X + ROAD_WIDTH - 10:
+			self.rect.right = ROAD_X + ROAD_WIDTH - 10
+		if self.rect.top < 10:
+			self.rect.top = 10
+		if self.rect.bottom > HEIGHT - 10:
+			self.rect.bottom = HEIGHT - 10
+
+	def draw(self, surface):
+		pygame.draw.rect(surface, (200, 0, 0), self.rect, border_radius=6)
 
 
 def draw_road(surface):
@@ -79,6 +122,8 @@ def draw_ui(surface, lives):
 	font = pygame.font.SysFont(None, 28)
 	txt = font.render(f'Vidas: {lives}', True, (255, 255, 255))
 	surface.blit(txt, (10, 10))
+	# mostrar temporizador si está disponible
+	# (se le pasará `time_left_ms` como tercer argumento cuando exista)
 
 
 def main():
@@ -105,9 +150,38 @@ def main():
 	bg_delay = 3000  # ms entre cambios de fondo (3 segundos)
 
 	player = Player()
-	obstacles = []
-	spawn_timer = 0
-	spawn_delay = random.randint(700, 1400)
+	# generar obstáculos iniciales
+	def generate_obstacles(avoid_rects=None, min_count=3, max_count=7):
+		obs = []
+		count = random.randint(min_count, max_count)
+		attempts = 0
+		while len(obs) < count and attempts < count * 20:
+			attempts += 1
+			o = Obstacle()
+			# elegir una y aleatoria dentro de la carretera (evitar top/bottom extremos)
+			o_y = random.randint(60, HEIGHT - o.height - 60)
+			o.rect.y = o_y
+			# evitar solapamiento con otros obstáculos
+			collides = any(o.rect.colliderect(existing.rect) for existing in obs)
+			# evitar solapamiento con rectángulos externos (jugador, perro, etc.)
+			if avoid_rects:
+				for r in avoid_rects:
+					if o.rect.colliderect(r):
+						collides = True
+			if not collides:
+				obs.append(o)
+		# si por alguna razón no se generaron suficientes, devolver los que haya
+		return obs
+
+	# el perro aparece después de 10 segundos
+	dog = None
+	dog_timer = 0
+	DOG_SPAWN_MS = 10000
+	obstacles = generate_obstacles(avoid_rects=[player.rect])
+	# temporizador de nivel (ms)
+	LEVEL_TIME_MS = 120000  # 120 segundos
+	level_time_left = LEVEL_TIME_MS
+	level_complete = False
 
 	lives = 3
 	invulnerable = False
@@ -122,32 +196,59 @@ def main():
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				running = False
-			if event.type == pygame.KEYDOWN and game_over:
+			if event.type == pygame.KEYDOWN and (game_over or level_complete):
 				if event.key == pygame.K_r:
 					# reiniciar juego
 					player = Player()
-					obstacles = []
+					dog = None
+					dog_timer = 0
+					obstacles = generate_obstacles(avoid_rects=[player.rect])
 					lives = 3
 					invulnerable = False
 					game_over = False
+					level_time_left = LEVEL_TIME_MS
+					level_complete = False
 
 		keys = pygame.key.get_pressed()
-		if not game_over:
+		if not game_over and not level_complete:
 			player.handle_input(keys)
+			# decrementar temporizador
+			level_time_left -= dt
+			if level_time_left <= 0:
+				level_time_left = 0
+				level_complete = True
 
-			# spawn obstacles
-			spawn_timer += dt
-			if spawn_timer >= spawn_delay:
-				obstacles.append(Obstacle())
-				spawn_timer = 0
-				spawn_delay = random.randint(600, 1400)
+			# actualizar temporizador de aparición del perro
+			if dog is None:
+				dog_timer += dt
+				if dog_timer >= DOG_SPAWN_MS:
+					# crear perro y regenerar obstáculos evitando jugador y perro
+					dog = Dog(player)
+					obstacles = generate_obstacles(avoid_rects=[player.rect, dog.rect])
 
-			# update obstacles
-			for ob in obstacles:
-				ob.update()
+			# si el jugador toca el borde superior, cambiar fondo, regenerar obstáculos y reposicionarlo abajo
+			if player.rect.top <= 0:
+				if backgrounds:
+					bg_index = (bg_index + 1) % len(backgrounds)
+				bg_timer = 0
+				# colocar jugador abajo
+				player.rect.bottom = HEIGHT - 10
+				# si el perro ya existe, recrearlo detrás del jugador y evitarlo al generar
+				if dog:
+					dog = Dog(player)
+					obstacles = generate_obstacles(avoid_rects=[player.rect, dog.rect])
+				else:
+					obstacles = generate_obstacles(avoid_rects=[player.rect])
+
+			# actualizar perro (persigue al jugador) solo si ya apareció
+			if dog:
+				dog.update(player.rect)
+
+			# Los obstáculos son estáticos (no se actualizan aquí)
 
 			# remove off-screen
-			obstacles = [o for o in obstacles if o.rect.top <= HEIGHT]
+			# mantener obstáculos dentro de la pantalla (no deberían moverse)
+			obstacles = [o for o in obstacles if o.rect.top <= HEIGHT and o.rect.bottom >= 0]
 
 			# collisions
 			if not invulnerable:
@@ -157,6 +258,11 @@ def main():
 						invulnerable = True
 						invulnerable_start = now
 						break
+				# colisión con el perro se comporta igual que con un obstáculo
+				if dog and not invulnerable and player.rect.colliderect(dog.rect):
+					lives -= 1
+					invulnerable = True
+					invulnerable_start = now
 
 			# handle invulnerability timeout
 			if invulnerable and now - invulnerable_start >= 1000:
@@ -165,12 +271,9 @@ def main():
 			if lives <= 0:
 				game_over = True
 
-		# actualizar alternancia de fondo
-		if backgrounds:
-			bg_timer += dt
-			if bg_timer >= bg_delay:
-				bg_index = (bg_index + 1) % len(backgrounds)
-				bg_timer = 0
+		# Nota: el cambio de fondo ya ocurre únicamente cuando el jugador
+		# toca el borde superior de la pantalla. Se ha desactivado el cambio
+		# automático por tiempo (antes dependía de `bg_timer`).
 
 		# draw
 		if backgrounds:
@@ -179,12 +282,27 @@ def main():
 			draw_road(screen)
 		for ob in obstacles:
 			ob.draw(screen)
+		# dibujar perro (detrás del jugador) si existe
+		if dog:
+			dog.draw(screen)
 		player.draw(screen, invulnerable=invulnerable)
+		# mostrar tiempo restante en UI
+		font = pygame.font.SysFont(None, 28)
+		time_txt = font.render(f'Tiempo: {level_time_left//1000}s', True, (255,255,255))
+		screen.blit(time_txt, (WIDTH - time_txt.get_width() - 10, 10))
 		draw_ui(screen, lives)
 
 		if game_over:
 			font = pygame.font.SysFont(None, 48)
 			txt = font.render('GAME OVER', True, (255, 0, 0))
+			screen.blit(txt, (WIDTH // 2 - txt.get_width() // 2, HEIGHT // 2 - 30))
+			small = pygame.font.SysFont(None, 24)
+			hint = small.render('Presiona R para reiniciar', True, (255, 255, 255))
+			screen.blit(hint, (WIDTH // 2 - hint.get_width() // 2, HEIGHT // 2 + 20))
+
+		if level_complete:
+			font = pygame.font.SysFont(None, 48)
+			txt = font.render('NIVEL COMPLETADO', True, (0, 255, 0))
 			screen.blit(txt, (WIDTH // 2 - txt.get_width() // 2, HEIGHT // 2 - 30))
 			small = pygame.font.SysFont(None, 24)
 			hint = small.render('Presiona R para reiniciar', True, (255, 255, 255))
