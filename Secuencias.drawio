@@ -1,0 +1,162 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36" version="29.3.8">
+  <diagram name="Página-1" id="1rCWHcISbvKI41cCI5iP">
+    <mxGraphModel dx="1695" dy="439" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-14" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="200" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-5" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" value="Actor" vertex="1">
+          <mxGeometry height="60" width="30" x="66" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-8" parent="1" style="html=1;whiteSpace=wrap;" value="BICICLETEROMAN" vertex="1">
+          <mxGeometry height="50" width="110" x="360" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-9" parent="1" style="html=1;whiteSpace=wrap;" value="MOTORJUEGO" vertex="1">
+          <mxGeometry height="50" width="110" x="625" y="506" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-10" parent="1" style="html=1;whiteSpace=wrap;" value="SISTEMAFISICA" vertex="1">
+          <mxGeometry height="50" width="110" x="530" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-11" parent="1" style="html=1;whiteSpace=wrap;" value="OBSTACULO" vertex="1">
+          <mxGeometry height="50" width="110" x="693" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-12" parent="1" style="html=1;whiteSpace=wrap;" value="LADRÓN" vertex="1">
+          <mxGeometry height="50" width="110" x="130" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-13" parent="1" style="html=1;whiteSpace=wrap;" value="UI" vertex="1">
+          <mxGeometry height="50" width="110" x="1010" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-18" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="288" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-15" parent="1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="mover(direccion)" vertex="1">
+          <mxGeometry height="26" width="100" x="215" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-16" parent="1" style="html=1;whiteSpace=wrap;" value="JUGADOR" vertex="1">
+          <mxGeometry height="50" width="110" x="210" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-20" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="287.66666666666674" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-19" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="actualizarVelocidad()" vertex="1">
+          <mxGeometry height="40" width="120" x="360" y="268" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-22" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="700" y="287.66666666666674" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-21" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="detectarColision()" vertex="1">
+          <mxGeometry height="30" width="110" x="530" y="273" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-24" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="305.16666666666674" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-23" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="colision?" vertex="1">
+          <mxGeometry height="30" width="90" x="700" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-25" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffc0;strokeColor=#ff0000;" value="COLISION" vertex="1">
+          <mxGeometry height="40" width="80" x="40" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-26" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-25" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;verticalAlign=bottom;endArrow=open;endSize=8;strokeColor=#ff0000;rounded=0;" value="no">
+          <mxGeometry relative="1" x="-1" as="geometry">
+            <mxPoint x="220" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-27" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-25" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;verticalAlign=top;endArrow=open;endSize=8;strokeColor=#ff0000;rounded=0;" value="yes">
+          <mxGeometry relative="1" x="-1" as="geometry">
+            <mxPoint x="80" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-30" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v5ghiTt6GGZBGpSo86IE-29">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-28" parent="1" style="html=1;whiteSpace=wrap;" value="SISTEMAFISICA" vertex="1">
+          <mxGeometry height="50" width="110" x="-60" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-29" parent="1" style="html=1;whiteSpace=wrap;" value="BICICLETEROMAN" vertex="1">
+          <mxGeometry height="50" width="110" x="130" y="540" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-31" parent="1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="reducirVelocidad()" vertex="1">
+          <mxGeometry height="22" width="110" x="30" y="590" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-33" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-32" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v5ghiTt6GGZBGpSo86IE-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-32" parent="1" style="html=1;whiteSpace=wrap;" value="BICICLETEROMAN" vertex="1">
+          <mxGeometry height="50" width="110" x="-60" y="650" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-34" parent="1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="aumentarDistancia()" vertex="1">
+          <mxGeometry height="30" width="120" x="30" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-35" parent="1" style="html=1;whiteSpace=wrap;" value="LADRÓN" vertex="1">
+          <mxGeometry height="50" width="110" x="460" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-36" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-37" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v5ghiTt6GGZBGpSo86IE-38">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-37" parent="1" style="html=1;whiteSpace=wrap;" value="SISTEMAFISICA" vertex="1">
+          <mxGeometry height="50" width="110" x="270" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-38" parent="1" style="html=1;whiteSpace=wrap;" value="BICICLETEROMAN" vertex="1">
+          <mxGeometry height="50" width="110" x="460" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-39" parent="1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="aumentarVelocidad()" vertex="1">
+          <mxGeometry height="20" width="120" x="360" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-40" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-41" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="v5ghiTt6GGZBGpSo86IE-35">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-41" parent="1" style="html=1;whiteSpace=wrap;" value="BICICLETEROMAN" vertex="1">
+          <mxGeometry height="50" width="110" x="270" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-42" parent="1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="reducirDistancia()" vertex="1">
+          <mxGeometry height="22" width="110" x="360" y="520" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-43" parent="1" style="html=1;whiteSpace=wrap;" value="LADRÓN" vertex="1">
+          <mxGeometry height="50" width="110" x="850" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-45" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-44" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1060" y="295.16666666666674" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-44" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="actualizarDistancia()" vertex="1">
+          <mxGeometry height="30" width="110" x="850" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-46" parent="1" style="rhombus;whiteSpace=wrap;html=1;fontColor=#000000;fillColor=#ffffc0;strokeColor=#ff0000;" value="distancia" vertex="1">
+          <mxGeometry height="40" width="80" x="640" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-47" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-46" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;verticalAlign=bottom;endArrow=open;endSize=8;strokeColor=#ff0000;rounded=0;" value="distancia &amp;gt; limite">
+          <mxGeometry relative="1" x="-1" as="geometry">
+            <mxPoint x="820" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-48" edge="1" parent="1" source="v5ghiTt6GGZBGpSo86IE-46" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;verticalAlign=top;endArrow=open;endSize=8;strokeColor=#ff0000;rounded=0;" value="distancia == 0">
+          <mxGeometry relative="1" x="-1" as="geometry">
+            <mxPoint x="680" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-49" parent="1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="nivelCompletado()" vertex="1">
+          <mxGeometry height="22" width="110" x="625" y="556" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-50" parent="1" style="html=1;whiteSpace=wrap;" value="MOTORJUEGO" vertex="1">
+          <mxGeometry height="50" width="110" x="840" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="v5ghiTt6GGZBGpSo86IE-51" parent="1" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" value="nivelPerdido()" vertex="1">
+          <mxGeometry height="25" width="90" x="860" y="425" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
