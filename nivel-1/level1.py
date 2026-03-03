@@ -19,8 +19,8 @@ def load_level():
     # - Escalera de plataformas ascendentes para llegar a un tramo elevado
     # - Obstáculos y powerups repartidos en puntos de riesgo/recompensa
     platforms = [
-        # Suelo
-        Platform(0, 450, LEVEL_LENGTH, 50),
+        # Suelo (plataforma principal): usar textura en mosaico 'suelo_tile.png'
+        Platform(0, 450, LEVEL_LENGTH, 300, texture_path='suelo.png', tile=True),
 
         # Primera sección: plataformas amplias para acostumbrarse
         Platform(160, 360, 180, 20),

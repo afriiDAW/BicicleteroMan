@@ -17,7 +17,12 @@ pygame.init()
 # Dimensiones por defecto en ventana (usadas al salir de fullscreen)
 WINDOWED_SIZE = (900, 500)
 # Inicializar pantalla en modo FULLSCREEN por defecto
-SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+# Usar DOUBLEBUF para buffer doble y, si está disponible, habilitar vsync (mejora fluidez en fullscreen)
+try:
+    SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF, vsync=1)
+except TypeError:
+    # pygame puede no soportar el argumento vsync en todas las builds; caer al modo sin vsync
+    SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF)
 WIDTH, HEIGHT = SCREEN.get_size()
 pygame.display.set_caption("Nivel 1 - Plataformas con Cámara")
 
@@ -88,10 +93,13 @@ def toggle_fullscreen():
     global SCREEN, WIDTH, HEIGHT, bg_scroll_x
     is_full = bool(pygame.display.get_surface().get_flags() & pygame.FULLSCREEN)
     if is_full:
-        # cambiar a ventana
-        SCREEN = pygame.display.set_mode(WINDOWED_SIZE)
+        # cambiar a ventana (usar DOUBLEBUF también en ventana)
+        SCREEN = pygame.display.set_mode(WINDOWED_SIZE, pygame.DOUBLEBUF)
     else:
-        SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+        try:
+            SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF, vsync=1)
+        except TypeError:
+            SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF)
 
     WIDTH, HEIGHT = SCREEN.get_size()
     # actualizar variables que dependen del tamaño de la pantalla
@@ -317,6 +325,8 @@ def save_level_to_file(path, platforms, obstacles, powerups, thief):
                 'axis': p.axis,
                 'range': p.range,
                 'speed': p.speed,
+                'texture': getattr(p, 'texture_path', None),
+                'tile': getattr(p, 'tile', False),
             })
         else:
             data['platforms'].append({
@@ -325,10 +335,31 @@ def save_level_to_file(path, platforms, obstacles, powerups, thief):
                 'y': p.rect.y,
                 'w': p.rect.width,
                 'h': p.rect.height,
+                'texture': getattr(p, 'texture_path', None),
+                'tile': getattr(p, 'tile', False),
             })
 
     data['obstacles'] = [{'x': o.rect.x, 'y': o.rect.y} for o in obstacles]
-    data['powerups'] = [{'x': p.rect.x, 'y': p.rect.y} for p in powerups]
+    # persistir textura de obstáculos si existe
+    data['obstacles'] = []
+    for o in obstacles:
+        data['obstacles'].append({
+            'x': o.rect.x,
+            'y': o.rect.y,
+            'texture': getattr(o, 'texture_path', None),
+            'w': getattr(o, 'size', (o.rect.width, o.rect.height))[0],
+            'h': getattr(o, 'size', (o.rect.width, o.rect.height))[1],
+        })
+    # persistir powerups con posibles texturas y tamaño
+    data['powerups'] = []
+    for p in powerups:
+        data['powerups'].append({
+            'x': p.rect.x,
+            'y': p.rect.y,
+            'texture': getattr(p, 'texture_path', None),
+            'w': getattr(p, 'size', (p.rect.width, p.rect.height))[0],
+            'h': getattr(p, 'size', (p.rect.width, p.rect.height))[1],
+        })
     data['thief'] = {'x': thief.rect.x, 'y': thief.rect.y}
 
     with open(path, 'w', encoding='utf-8') as f:
@@ -342,13 +373,27 @@ def load_level_from_file(path):
     platforms = []
     for p in data.get('platforms', []):
         if p.get('type') == 'moving':
-            mp = MovingPlatform(int(p['x']), int(p['y']), int(p['w']), int(p['h']), axis=p.get('axis','x'), range_px=int(p.get('range',120)), speed=float(p.get('speed',1.0)))
+            mp = MovingPlatform(int(p['x']), int(p['y']), int(p['w']), int(p['h']), axis=p.get('axis','x'), range_px=int(p.get('range',120)), speed=float(p.get('speed',1.0)), texture_path=p.get('texture'), tile=bool(p.get('tile', False)))
             platforms.append(mp)
         else:
-            platforms.append(Platform(int(p['x']), int(p['y']), int(p['w']), int(p['h'])))
+            platforms.append(Platform(int(p['x']), int(p['y']), int(p['w']), int(p['h']), texture_path=p.get('texture'), tile=bool(p.get('tile', False))))
 
-    obstacles = [Obstacle(int(o['x']), int(o['y'])) for o in data.get('obstacles', [])]
-    powerups = [PowerUp(int(p['x']), int(p['y'])) for p in data.get('powerups', [])]
+    obstacles = []
+    for o in data.get('obstacles', []):
+        ox = int(o.get('x', 0))
+        oy = int(o.get('y', 0))
+        tex = o.get('texture')
+        w = int(o.get('w', 40))
+        h = int(o.get('h', 40))
+        obstacles.append(Obstacle(ox, oy, texture_path=tex, size=(w, h)))
+    powerups = []
+    for p in data.get('powerups', []):
+        px = int(p.get('x', 0))
+        py = int(p.get('y', 0))
+        tex = p.get('texture')
+        w = int(p.get('w', 30))
+        h = int(p.get('h', 30))
+        powerups.append(PowerUp(px, py, texture_path=tex, size=(w, h)))
     thief_data = data.get('thief', {'x': 400, 'y': 390})
     thief = Thief(int(thief_data.get('x', 400)), int(thief_data.get('y', 390)))
 
@@ -367,6 +412,13 @@ if os.path.exists(custom_path):
         platforms, obstacles, powerups, thief = load_level()
 else:
     platforms, obstacles, powerups, thief = load_level()
+
+# Forzar la posición por defecto del ladrón al iniciar la partida
+try:
+    thief.rect.topleft = (400, 390)
+except Exception:
+    # si por alguna razón thief no existe aún, ignorar
+    pass
 
 player = Player(50, 300)
 camera = Camera(WIDTH, LEVEL_LENGTH)
@@ -458,12 +510,23 @@ while running:
     player.update(platforms, LEVEL_LENGTH)
     # Pasamos las plataformas y el jugador para que el ladrón ajuste su velocidad
     thief_escaped = thief.update(platforms, LEVEL_LENGTH, player)
-    camera.update(player)
+    # pasar dt para que la cámara pueda suavizar el seguimiento de forma dependiente del tiempo
+    camera.update(player, dt)
 
     # -------- COLISIONES --------
-    for obstacle in obstacles:
+    # comprobar colisiones con obstáculos: si el jugador colisiona, eliminar el obstáculo
+    for obstacle in obstacles[:]:
         if player.rect.colliderect(obstacle.rect):
-            player.slow_down(2)
+            # aplicar efecto al jugador
+            try:
+                player.slow_down(2)
+            except Exception:
+                pass
+            # eliminar obstáculo del nivel
+            try:
+                obstacles.remove(obstacle)
+            except ValueError:
+                pass
 
     for powerup in powerups[:]:
         if player.rect.colliderect(powerup.rect):
@@ -488,23 +551,32 @@ while running:
     # Texto en la esquina superior
     route_text = FONT.render(f"Ruta ladrón: {getattr(thief, 'route', 'N/A')}", True, BLACK)
     SCREEN.blit(route_text, (10, 10))
-
-    # Texto sobre el ladrón (convertir rect al espacio de la cámara)
-    thief_screen_rect = camera.apply(thief.rect)
-    route_on_thief = FONT.render(f"{getattr(thief, 'route', '')}", True, (255, 255, 255))
-    # dibujar fondo pequeño para legibilidad
-    bg = pygame.Surface((route_on_thief.get_width() + 6, route_on_thief.get_height() + 4))
-    bg.set_alpha(180)
-    bg.fill((0, 0, 0))
-    SCREEN.blit(bg, (thief_screen_rect.x, thief_screen_rect.y - 22))
-    SCREEN.blit(route_on_thief, (thief_screen_rect.x + 3, thief_screen_rect.y - 20))
+    # Texto sobre el ladrón eliminado (no mostrar etiqueta encima de su sprite)
+    # Contador de FPS (esquina superior derecha)
+    try:
+        fps_val = int(CLOCK.get_fps())
+    except Exception:
+        fps_val = 0
+    fps_text = FONT.render(f"FPS: {fps_val}", True, BLACK)
+    SCREEN.blit(fps_text, (WIDTH - fps_text.get_width() - 8, 8))
 
     # -------- CONDICIÓN DE VICTORIA --------
     if player.rect.colliderect(thief.rect):
         restart = show_end_screen("¡HAS ATRAPADO AL LADRÓN!")
         if restart:
-            # recargar nivel
-            platforms, obstacles, powerups, thief = load_level()
+            # recargar nivel: preferir nivel personalizado si existe
+            if os.path.exists(custom_path):
+                try:
+                    platforms, obstacles, powerups, thief = load_level_from_file(custom_path)
+                except Exception:
+                    platforms, obstacles, powerups, thief = load_level()
+            else:
+                platforms, obstacles, powerups, thief = load_level()
+            # asegurar posición por defecto del ladrón al reiniciar
+            try:
+                thief.rect.topleft = (400, 390)
+            except Exception:
+                pass
             player = Player(50, 300)
             camera = Camera(WIDTH, LEVEL_LENGTH)
             continue
@@ -516,7 +588,19 @@ while running:
     if thief_escaped:
         restart = show_end_screen("EL LADRÓN ESCAPÓ. FIN DE LA PARTIDA.")
         if restart:
-            platforms, obstacles, powerups, thief = load_level()
+            # recargar nivel: preferir nivel personalizado si existe
+            if os.path.exists(custom_path):
+                try:
+                    platforms, obstacles, powerups, thief = load_level_from_file(custom_path)
+                except Exception:
+                    platforms, obstacles, powerups, thief = load_level()
+            else:
+                platforms, obstacles, powerups, thief = load_level()
+            # asegurar posición por defecto del ladrón al reiniciar
+            try:
+                thief.rect.topleft = (400, 390)
+            except Exception:
+                pass
             player = Player(50, 300)
             camera = Camera(WIDTH, LEVEL_LENGTH)
             continue
@@ -524,4 +608,5 @@ while running:
             pygame.quit()
             sys.exit()
 
-    pygame.display.update()
+    # usar flip() con doble buffer; suele ser más estable en fullscreen
+    pygame.display.flip()

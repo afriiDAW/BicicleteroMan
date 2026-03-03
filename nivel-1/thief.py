@@ -1,5 +1,6 @@
 import pygame
 import random
+import os
 
 # Física básica
 GRAVITY = 0.8
@@ -9,9 +10,26 @@ JUMP_FORCE = -12
 class Thief(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        self.image = pygame.Surface((40, 60))
-        self.image.fill((0, 0, 0))
-        self.rect = self.image.get_rect(topleft=(x, y))
+        # tamaño base de la hitbox (mantener para físicas)
+        base_w, base_h = 40, 60
+        # rect de colisiones / físicas
+        self.rect = pygame.Rect(x, y, base_w, base_h)
+
+        # intentar cargar sprite del ladrón desde imagenes/ladron.png
+        self.image = pygame.Surface((base_w, base_h), pygame.SRCALPHA)
+        try:
+            assets_dir = os.path.join(os.path.dirname(__file__), 'imagenes')
+            ladron_path = os.path.join(assets_dir, 'ladron.png')
+            if os.path.exists(ladron_path):
+                img = pygame.image.load(ladron_path).convert_alpha()
+                img = pygame.transform.scale(img, (base_w, base_h))
+                self.image.blit(img, (0, 0))
+            else:
+                # fallback visual si no existe la imagen
+                self.image.fill((0, 0, 0))
+        except Exception:
+            # en caso de error, usar rect negro simple
+            self.image.fill((0, 0, 0))
 
         # Movimiento
         # Aumentamos la velocidad base para que el ladrón sea más rápido
