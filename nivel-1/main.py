@@ -4,7 +4,7 @@ import sys
 from player import Player
 from camera import Camera
 from level1 import load_level, LEVEL_LENGTH
-from platform import Platform, MovingPlatform
+from plataformas import Platform, MovingPlatform
 from obstacle import Obstacle
 from powerup import PowerUp
 from thief import Thief
@@ -13,18 +13,105 @@ import os
 
 pygame.init()
 
+# ---------------- FUNCIONES DE UTILIDAD ----------------
+def load_sound(filename, volume=1.0):
+    """Carga un archivo de sonido con manejo de errores unificado."""
+    try:
+        sound_path = os.path.join(os.path.dirname(__file__), 'sonidos', filename)
+        if os.path.exists(sound_path):
+            sound = pygame.mixer.Sound(sound_path)
+            sound.set_volume(volume)
+            print(f"Sonido cargado: {sound_path}")
+            return sound
+        else:
+            print(f"Archivo de sonido no encontrado: {sound_path}")
+            return None
+    except Exception as e:
+        print(f"Error cargando sonido {filename}: {e}")
+        return None
+
+def load_game_level():
+    """Carga el nivel apropiado (personalizado o por defecto)."""
+    custom_path = os.path.join(os.path.dirname(__file__), "level_custom.json")
+    if os.path.exists(custom_path):
+        try:
+            return load_level_from_file(custom_path)
+        except Exception as e:
+            print("Error cargando nivel personalizado, cargando por defecto:", e)
+    return load_level()
+
+def reset_game_state():
+    """Reinicia el estado del juego (jugador, cámara, música)."""
+    player = Player(50, 843, jump_sound)
+    camera = Camera(WIDTH, LEVEL_LENGTH)
+    try:
+        thief.rect.topleft = (400, 843)
+    except Exception:
+        pass
+    # Reiniciar música de fondo
+    try:
+        pygame.mixer.music.play(-1)
+    except Exception:
+        pass
+    return player, camera
+
+# ---------------- MÚSICA Y SONIDOS ----------------
+# Cargar y reproducir música de fondo
+try:
+    sound_dir = os.path.join(os.path.dirname(__file__), 'sonidos')
+    music_path = os.path.join(sound_dir, 'nivel1.mp3')
+    if os.path.exists(music_path):
+        pygame.mixer.music.load(music_path)
+        pygame.mixer.music.set_volume(0.7)
+        pygame.mixer.music.play(-1)
+        print(f"Música cargada: {music_path}")
+    else:
+        print(f"Archivo de música no encontrado: {music_path}")
+except Exception as e:
+    print(f"Error cargando música: {e}")
+
+# Cargar sonidos de efectos usando la función optimizada
+jump_sound = load_sound('salto.mp3', 0.8)
+obstacle_sound = load_sound('obstaculo.mp3', 0.9)
+gameover_sound = load_sound('gameover.mp3', 0.8)
+powerup_sound = load_sound('powerup.mp3', 0.8)
+
 # ---------------- CONFIGURACIÓN ----------------
+# Resolución de referencia para el juego (base design resolution)
+REFERENCE_WIDTH = 1920
+REFERENCE_HEIGHT = 1080
 # Dimensiones por defecto en ventana (usadas al salir de fullscreen)
 WINDOWED_SIZE = (900, 500)
-# Inicializar pantalla en modo FULLSCREEN por defecto
+
+# Inicializar pantalla física
 # Usar DOUBLEBUF para buffer doble y, si está disponible, habilitar vsync (mejora fluidez en fullscreen)
 try:
-    SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF, vsync=1)
+    PHYSICAL_SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF, vsync=1)
 except TypeError:
     # pygame puede no soportar el argumento vsync en todas las builds; caer al modo sin vsync
-    SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF)
-WIDTH, HEIGHT = SCREEN.get_size()
-pygame.display.set_caption("Nivel 1 - Plataformas con Cámara")
+    PHYSICAL_SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+
+PHYSICAL_WIDTH, PHYSICAL_HEIGHT = PHYSICAL_SCREEN.get_size()
+
+# Crear superficie virtual para el juego
+VIRTUAL_SCREEN = pygame.Surface((REFERENCE_WIDTH, REFERENCE_HEIGHT))
+
+# Calcular factor de escala manteniendo aspect ratio
+scale_x = PHYSICAL_WIDTH / REFERENCE_WIDTH
+scale_y = PHYSICAL_HEIGHT / REFERENCE_HEIGHT
+SCALE_FACTOR = min(scale_x, scale_y)
+
+# Calcular dimensiones escaladas y posición para centrar
+SCALED_WIDTH = int(REFERENCE_WIDTH * SCALE_FACTOR)
+SCALED_HEIGHT = int(REFERENCE_HEIGHT * SCALE_FACTOR)
+OFFSET_X = (PHYSICAL_WIDTH - SCALED_WIDTH) // 2
+OFFSET_Y = (PHYSICAL_HEIGHT - SCALED_HEIGHT) // 2
+
+# Para compatibilidad con código existente
+SCREEN = VIRTUAL_SCREEN
+WIDTH, HEIGHT = REFERENCE_WIDTH, REFERENCE_HEIGHT
+
+pygame.display.set_caption(f"Nivel 1 - Plataformas con Cámara ({PHYSICAL_WIDTH}x{PHYSICAL_HEIGHT} -> {REFERENCE_WIDTH}x{REFERENCE_HEIGHT})")
 
 CLOCK = pygame.time.Clock()
 FPS = 60
@@ -49,7 +136,7 @@ bg_w = bg_h = 0
 bg_scroll_x = 0.0
 try:
     assets_dir = os.path.join(os.path.dirname(__file__), 'imagenes')
-    bg_path = os.path.join(assets_dir, 'fondo_bicicletero.png')
+    bg_path = os.path.join(assets_dir, 'fondo5.png')
     if os.path.exists(bg_path):
         bg_image = pygame.image.load(bg_path).convert_alpha()
         bg_w, bg_h = bg_image.get_size()
@@ -84,26 +171,78 @@ def draw_tiled_background(surface, camera, scroll_offset=0.0):
         x += bg_w
 
 
+def convert_mouse_pos(physical_pos):
+    """Convierte coordenadas del ratón de la pantalla física a la virtual."""
+    px, py = physical_pos
+    
+    # Ajustar por el offset de centrado
+    vx = (px - OFFSET_X) / SCALE_FACTOR
+    vy = (py - OFFSET_Y) / SCALE_FACTOR
+    
+    # Clampear a los límites de la pantalla virtual
+    vx = max(0, min(REFERENCE_WIDTH - 1, vx))
+    vy = max(0, min(REFERENCE_HEIGHT - 1, vy))
+    
+    return (int(vx), int(vy))
+
+
+def update_display_scaling():
+    """Actualiza los factores de escala después de un cambio de resolución."""
+    global PHYSICAL_WIDTH, PHYSICAL_HEIGHT, SCALE_FACTOR, SCALED_WIDTH, SCALED_HEIGHT, OFFSET_X, OFFSET_Y
+    
+    PHYSICAL_WIDTH, PHYSICAL_HEIGHT = PHYSICAL_SCREEN.get_size()
+    
+    # Calcular factor de escala manteniendo aspect ratio
+    scale_x = PHYSICAL_WIDTH / REFERENCE_WIDTH
+    scale_y = PHYSICAL_HEIGHT / REFERENCE_HEIGHT
+    SCALE_FACTOR = min(scale_x, scale_y)
+    
+    # Calcular dimensiones escaladas y posición para centrar
+    SCALED_WIDTH = int(REFERENCE_WIDTH * SCALE_FACTOR)
+    SCALED_HEIGHT = int(REFERENCE_HEIGHT * SCALE_FACTOR)
+    OFFSET_X = (PHYSICAL_WIDTH - SCALED_WIDTH) // 2
+    OFFSET_Y = (PHYSICAL_HEIGHT - SCALED_HEIGHT) // 2
+
+
+def present_screen():
+    """Renderiza la superficie virtual escalada en la pantalla física."""
+    # Llenar la pantalla física con negro para las barras letterbox/pillarbox
+    PHYSICAL_SCREEN.fill(BLACK)
+    
+    # Escalar y centrar la superficie virtual
+    if SCALE_FACTOR != 1.0:
+        scaled_surface = pygame.transform.smoothscale(VIRTUAL_SCREEN, (SCALED_WIDTH, SCALED_HEIGHT))
+        PHYSICAL_SCREEN.blit(scaled_surface, (OFFSET_X, OFFSET_Y))
+    else:
+        PHYSICAL_SCREEN.blit(VIRTUAL_SCREEN, (OFFSET_X, OFFSET_Y))
+    
+    pygame.display.flip()
+
+
 def toggle_fullscreen():
     """Alterna entre fullscreen y ventana definida en WINDOWED_SIZE.
 
-    Actualiza las variables globales SCREEN, WIDTH, HEIGHT y, si existe,
-    actualiza camera.screen_width para que la cámara use el nuevo ancho.
+    Actualiza las variables globales PHYSICAL_SCREEN y factores de escala, 
+    y actualiza camera.screen_width para que la cámara use el nuevo ancho.
     """
-    global SCREEN, WIDTH, HEIGHT, bg_scroll_x
+    global PHYSICAL_SCREEN, bg_scroll_x
     is_full = bool(pygame.display.get_surface().get_flags() & pygame.FULLSCREEN)
     if is_full:
         # cambiar a ventana (usar DOUBLEBUF también en ventana)
-        SCREEN = pygame.display.set_mode(WINDOWED_SIZE, pygame.DOUBLEBUF)
+        PHYSICAL_SCREEN = pygame.display.set_mode(WINDOWED_SIZE, pygame.DOUBLEBUF)
     else:
         try:
-            SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF, vsync=1)
+            PHYSICAL_SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF, vsync=1)
         except TypeError:
-            SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF)
+            PHYSICAL_SCREEN = pygame.display.set_mode((0, 0), pygame.FULLSCREEN | pygame.DOUBLEBUF)
 
-    WIDTH, HEIGHT = SCREEN.get_size()
-    # actualizar variables que dependen del tamaño de la pantalla
-    pygame.display.set_caption(f"Nivel 1 - Plataformas con Cámara ({WIDTH}x{HEIGHT})")
+    # Actualizar factores de escala
+    update_display_scaling()
+    
+    # Actualizar caption
+    pygame.display.set_caption(f"Nivel 1 - Plataformas con Cámara ({PHYSICAL_WIDTH}x{PHYSICAL_HEIGHT} -> {REFERENCE_WIDTH}x{REFERENCE_HEIGHT})")
+    
+    # Actualizar cámara si existe (WIDTH siempre es REFERENCE_WIDTH)
     try:
         camera.screen_width = WIDTH
     except Exception:
@@ -123,13 +262,15 @@ def show_level_designer(platforms, obstacles, powerups, thief, player, camera):
     - Suprimir / Backspace: borrar objeto seleccionado
     - Shift+J: salir del diseñador
     """
-    selecting = None  # objeto seleccionado (reference)
+    selected_objects = []  # lista de objetos seleccionados
     dragging = False
+    drag_start_pos = None  # posición inicial del arrastre
+    initial_positions = {}  # posiciones iniciales de los objetos al empezar arrastre
     info_lines = [
         "Shift+J: salir del diseñador",
-        "Click: seleccionar / arrastrar",
+        "Click: seleccionar | Ctrl+Click: selección múltiple | Arrastrar: mover",
         "A: añadir Platform | O: añadir Obstacle | P: añadir PowerUp | M: añadir MovingPlatform",
-        "Suprimir/Backspace: eliminar seleccionado | S: guardar | L: recargar",
+        "Suprimir/Backspace: eliminar seleccionados | S: guardar | L: recargar",
         "Si seleccionas MovingPlatform: X toggle axis, R/T range -/+ , F/G speed -/+",
         "Flechas izquierda/derecha o A/D: mover la cámara",
     ]
@@ -147,52 +288,60 @@ def show_level_designer(platforms, obstacles, powerups, thief, player, camera):
                 if event.key == pygame.K_ESCAPE:
                     return
                 if event.key == pygame.K_a:
-                    mx, my = pygame.mouse.get_pos()
+                    mx, my = convert_mouse_pos(pygame.mouse.get_pos())
                     wx = mx + camera.offset_x
                     # añadir plataforma por defecto
                     newp = Platform(wx - 50, my - 10, 100, 20)
                     platforms.append(newp)
-                    selecting = newp
+                    selected_objects = [newp]
                     dragging = True
+                    drag_start_pos = (wx, my)
+                    initial_positions = {newp: (newp.rect.x, newp.rect.y)}
                 if event.key == pygame.K_o:
-                    mx, my = pygame.mouse.get_pos()
+                    mx, my = convert_mouse_pos(pygame.mouse.get_pos())
                     wx = mx + camera.offset_x
                     newo = Obstacle(wx - 20, my - 20)
                     obstacles.append(newo)
-                    selecting = newo
+                    selected_objects = [newo]
                     dragging = True
+                    drag_start_pos = (wx, my)
+                    initial_positions = {newo: (newo.rect.x, newo.rect.y)}
                 if event.key == pygame.K_p:
-                    mx, my = pygame.mouse.get_pos()
+                    mx, my = convert_mouse_pos(pygame.mouse.get_pos())
                     wx = mx + camera.offset_x
                     newpow = PowerUp(wx - 15, my - 15)
                     powerups.append(newpow)
-                    selecting = newpow
+                    selected_objects = [newpow]
                     dragging = True
+                    drag_start_pos = (wx, my)
+                    initial_positions = {newpow: (newpow.rect.x, newpow.rect.y)}
                 if event.key == pygame.K_m:
-                    mx, my = pygame.mouse.get_pos()
+                    mx, my = convert_mouse_pos(pygame.mouse.get_pos())
                     wx = mx + camera.offset_x
                     # añadir plataforma móvil por defecto
                     newm = MovingPlatform(wx - 50, my - 10, 100, 20, axis='x', range_px=120, speed=1.0)
                     platforms.append(newm)
-                    selecting = newm
+                    selected_objects = [newm]
                     dragging = True
+                    drag_start_pos = (wx, my)
+                    initial_positions = {newm: (newm.rect.x, newm.rect.y)}
                 if event.key in (pygame.K_DELETE, pygame.K_BACKSPACE):
-                    if selecting:
+                    for obj in selected_objects[:]:
                         # eliminar del contenedor correspondiente
-                        if isinstance(selecting, Platform):
-                            if selecting in platforms:
-                                platforms.remove(selecting)
-                        elif isinstance(selecting, Obstacle):
-                            if selecting in obstacles:
-                                obstacles.remove(selecting)
-                        elif isinstance(selecting, PowerUp):
-                            if selecting in powerups:
-                                powerups.remove(selecting)
-                        selecting = None
-                        dragging = False
+                        if isinstance(obj, Platform):
+                            if obj in platforms:
+                                platforms.remove(obj)
+                        elif isinstance(obj, Obstacle):
+                            if obj in obstacles:
+                                obstacles.remove(obj)
+                        elif isinstance(obj, PowerUp):
+                            if obj in powerups:
+                                powerups.remove(obj)
+                    selected_objects.clear()
+                    dragging = False
                 if event.key == pygame.K_s:
                     # guardar nivel a JSON
-                    save_path = os.path.join(os.getcwd(), "level_custom.json")
+                    save_path = os.path.join(os.path.dirname(__file__), "level_custom.json")
                     try:
                         save_level_to_file(save_path, platforms, obstacles, powerups, thief)
                         print(f"Nivel guardado en {save_path}")
@@ -200,7 +349,7 @@ def show_level_designer(platforms, obstacles, powerups, thief, player, camera):
                         print("Error guardando nivel:", e)
                 if event.key == pygame.K_l:
                     # recargar desde archivo si existe
-                    load_path = os.path.join(os.getcwd(), "level_custom.json")
+                    load_path = os.path.join(os.path.dirname(__file__), "level_custom.json")
                     if os.path.exists(load_path):
                         try:
                             lp, lo, lpu, lth = load_level_from_file(load_path)
@@ -210,59 +359,91 @@ def show_level_designer(platforms, obstacles, powerups, thief, player, camera):
                             powerups.clear(); powerups.extend(lpu)
                             # actualizar posición del ladrón
                             thief.rect.topleft = (lth.rect.x, lth.rect.y)
-                            selecting = None
+                            selected_objects.clear()
                             dragging = False
                             print("Nivel recargado desde archivo")
                         except Exception as e:
                             print("Error cargando nivel:", e)
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
-                    mx, my = event.pos
+                    mx, my = convert_mouse_pos(event.pos)
                     wx = mx + camera.offset_x
                     wy = my
-                    # seleccionar el primer objeto bajo el cursor (prioridad: powerups, obstacles, platforms)
-                    selecting = None
+                    
+                    # detectar si Ctrl está presionado para selección múltiple
+                    keys = pygame.key.get_pressed()
+                    ctrl_held = keys[pygame.K_LCTRL] or keys[pygame.K_RCTRL]
+                    
+                    # buscar objeto bajo el cursor
+                    clicked_obj = None
                     for lst in (powerups, obstacles, platforms):
                         for obj in reversed(lst):
                             if obj.rect.collidepoint((wx, wy)):
-                                selecting = obj
-                                dragging = True
+                                clicked_obj = obj
                                 break
-                        if selecting:
+                        if clicked_obj:
                             break
+                    
+                    if clicked_obj:
+                        if ctrl_held:
+                            # selección múltiple: agregar/quitar del conjunto
+                            if clicked_obj in selected_objects:
+                                selected_objects.remove(clicked_obj)
+                            else:
+                                selected_objects.append(clicked_obj)
+                        else:
+                            # selección simple: reemplazar selección
+                            selected_objects = [clicked_obj]
+                        
+                        if selected_objects:
+                            dragging = True
+                            drag_start_pos = (wx, wy)
+                            # guardar posiciones iniciales de todos los objetos seleccionados
+                            initial_positions = {obj: (obj.rect.x, obj.rect.y) for obj in selected_objects}
+                    elif not ctrl_held:
+                        # click en vacío sin Ctrl: deseleccionar todo
+                        selected_objects.clear()
             if event.type == pygame.MOUSEBUTTONUP:
                 if event.button == 1:
                     dragging = False
             if event.type == pygame.MOUSEMOTION:
-                if dragging and selecting:
-                    mx, my = event.pos
+                if dragging and selected_objects and drag_start_pos:
+                    mx, my = convert_mouse_pos(event.pos)
                     wx = mx + camera.offset_x
                     wy = my
-                    # mover el objeto centrando según su tamaño
-                    w, h = selecting.rect.size
-                    selecting.rect.topleft = (int(wx - w / 2), int(wy - h / 2))
+                    # calcular desplazamiento desde la posición inicial
+                    dx = wx - drag_start_pos[0]
+                    dy = wy - drag_start_pos[1]
+                    # aplicar desplazamiento a todos los objetos seleccionados
+                    for obj in selected_objects:
+                        if obj in initial_positions:
+                            orig_x, orig_y = initial_positions[obj]
+                            obj.rect.x = orig_x + dx
+                            obj.rect.y = orig_y + dy
 
         # manejo de teclas específicas para objeto seleccionado (fuera del loop de eventos)
         keys = pygame.key.get_pressed()
-        if selecting and isinstance(selecting, MovingPlatform):
+        # propiedades específicas solo si hay un solo MovingPlatform seleccionado
+        if len(selected_objects) == 1 and isinstance(selected_objects[0], MovingPlatform):
+            selected_platform = selected_objects[0]
             # toggle axis
             if keys[pygame.K_x]:
-                selecting.axis = 'y' if selecting.axis == 'x' else 'x'
+                selected_platform.axis = 'y' if selected_platform.axis == 'x' else 'x'
                 # pequeña espera para evitar toggle continuo
                 pygame.time.wait(150)
             # range +/-
             if keys[pygame.K_r]:
-                selecting.range = max(8, selecting.range - 10)
+                selected_platform.range = max(8, selected_platform.range - 10)
                 pygame.time.wait(120)
             if keys[pygame.K_t]:
-                selecting.range = selecting.range + 10
+                selected_platform.range = selected_platform.range + 10
                 pygame.time.wait(120)
             # speed +/-
             if keys[pygame.K_f]:
-                selecting.speed = max(0.1, selecting.speed - 0.2)
+                selected_platform.speed = max(0.1, selected_platform.speed - 0.2)
                 pygame.time.wait(120)
             if keys[pygame.K_g]:
-                selecting.speed = selecting.speed + 0.2
+                selected_platform.speed = selected_platform.speed + 0.2
                 pygame.time.wait(120)
 
         # Movimiento de cámara dentro del diseñador (WASD o flechas)
@@ -275,13 +456,14 @@ def show_level_designer(platforms, obstacles, powerups, thief, player, camera):
 
         # Si hay un objeto seleccionado y es MovingPlatform, mostrar sus propiedades
         prop_lines = []
-        if selecting and isinstance(selecting, MovingPlatform):
-            prop_lines.append(f"MovingPlatform axis={selecting.axis} range={int(selecting.range)} speed={round(selecting.speed,2)}")
+        if len(selected_objects) == 1 and isinstance(selected_objects[0], MovingPlatform):
+            selected_platform = selected_objects[0]
+            prop_lines.append(f"MovingPlatform axis={selected_platform.axis} range={int(selected_platform.range)} speed={round(selected_platform.speed,2)}")
             prop_lines.append("X: toggle axis | R/T: range -/+ 10 | F/G: speed -/+ 0.2")
 
 
         # Dibujar nivel actual con overlay
-        SCREEN.fill(WHITE)
+        draw_tiled_background(SCREEN, camera, bg_scroll_x)
         # dibujar plataformas, obstáculos y powerups
         for plat in platforms:
             SCREEN.blit(plat.image, camera.apply(plat.rect))
@@ -290,9 +472,9 @@ def show_level_designer(platforms, obstacles, powerups, thief, player, camera):
         for pu in powerups:
             SCREEN.blit(pu.image, camera.apply(pu.rect))
 
-        # resaltar seleccionado
-        if selecting:
-            sel_rect = camera.apply(selecting.rect)
+        # resaltar seleccionados
+        for obj in selected_objects:
+            sel_rect = camera.apply(obj.rect)
             pygame.draw.rect(SCREEN, (255, 0, 0), sel_rect, 3)
 
         # instrucciones
@@ -307,7 +489,7 @@ def show_level_designer(platforms, obstacles, powerups, thief, player, camera):
             SCREEN.blit(txt, (8, y))
             y += 20
 
-        pygame.display.update()
+        present_screen()
 
 
 def save_level_to_file(path, platforms, obstacles, powerups, thief):
@@ -360,7 +542,7 @@ def save_level_to_file(path, platforms, obstacles, powerups, thief):
             'w': getattr(p, 'size', (p.rect.width, p.rect.height))[0],
             'h': getattr(p, 'size', (p.rect.width, p.rect.height))[1],
         })
-    data['thief'] = {'x': thief.rect.x, 'y': thief.rect.y}
+    data['thief'] = {'x': thief.rect.x, 'y': 843}
 
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2)
@@ -394,33 +576,23 @@ def load_level_from_file(path):
         w = int(p.get('w', 30))
         h = int(p.get('h', 30))
         powerups.append(PowerUp(px, py, texture_path=tex, size=(w, h)))
-    thief_data = data.get('thief', {'x': 400, 'y': 390})
-    thief = Thief(int(thief_data.get('x', 400)), int(thief_data.get('y', 390)))
+    thief_data = data.get('thief', {'x': 400, 'y': 843})
+    thief = Thief(int(thief_data.get('x', 400)), int(thief_data.get('y', 843)))
 
     return platforms, obstacles, powerups, thief
 
 
 # ---------------- CARGAR NIVEL ----------------
-# Si existe un nivel personalizado guardado, cargarlo automáticamente
-custom_path = os.path.join(os.getcwd(), "level_custom.json")
-if os.path.exists(custom_path):
-    try:
-        platforms, obstacles, powerups, thief = load_level_from_file(custom_path)
-        print(f"Nivel personalizado cargado desde {custom_path}")
-    except Exception as e:
-        print("Error cargando nivel personalizado, cargando por defecto:", e)
-        platforms, obstacles, powerups, thief = load_level()
-else:
-    platforms, obstacles, powerups, thief = load_level()
+# Cargar el nivel apropiado usando la función optimizada
+platforms, obstacles, powerups, thief = load_game_level()
 
 # Forzar la posición por defecto del ladrón al iniciar la partida
 try:
-    thief.rect.topleft = (400, 390)
+    thief.rect.topleft = (400, 843)
 except Exception:
-    # si por alguna razón thief no existe aún, ignorar
     pass
 
-player = Player(50, 300)
+player = Player(50, 843, jump_sound)
 camera = Camera(WIDTH, LEVEL_LENGTH)
 
 
@@ -444,7 +616,7 @@ def show_end_screen(message: str) -> bool:
                 if event.key == pygame.K_r:
                     return True
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if button_rect.collidepoint(event.pos):
+                if button_rect.collidepoint(convert_mouse_pos(event.pos)):
                     return True
 
         # Fondo semitransparente
@@ -464,7 +636,7 @@ def show_end_screen(message: str) -> bool:
         btn_rect = btn_text.get_rect(center=button_rect.center)
         SCREEN.blit(btn_text, btn_rect)
 
-        pygame.display.update()
+        present_screen()
 
 # ---------------- BUCLE PRINCIPAL ----------------
 running = True
@@ -488,6 +660,12 @@ while running:
             if event.key == pygame.K_j and (event.mod & pygame.KMOD_SHIFT):
                 # pausa el juego y abre la herramienta de diseño
                 show_level_designer(platforms, obstacles, powerups, thief, player, camera)
+            # toggle música con tecla M
+            if event.key == pygame.K_m:
+                if pygame.mixer.music.get_busy():
+                    pygame.mixer.music.pause()
+                else:
+                    pygame.mixer.music.unpause()
             # alternar fullscreen con F11
             if event.key == pygame.K_F11:
                 toggle_fullscreen()
@@ -514,22 +692,28 @@ while running:
     camera.update(player, dt)
 
     # -------- COLISIONES --------
-    # comprobar colisiones con obstáculos: si el jugador colisiona, eliminar el obstáculo
+    # Comprobar colisiones con obstáculos: si el jugador colisiona, eliminar el obstáculo
     for obstacle in obstacles[:]:
         if player.rect.colliderect(obstacle.rect):
-            # aplicar efecto al jugador
+            # Reproducir sonido y aplicar efecto
+            if obstacle_sound:
+                obstacle_sound.play()
             try:
                 player.slow_down(2)
             except Exception:
                 pass
-            # eliminar obstáculo del nivel
+            # Eliminar obstáculo del nivel
             try:
                 obstacles.remove(obstacle)
             except ValueError:
                 pass
 
+    # Comprobar colisiones con powerups
     for powerup in powerups[:]:
         if player.rect.colliderect(powerup.rect):
+            # Reproducir sonido del powerup
+            if powerup_sound:
+                powerup_sound.play()
             player.speed_up(3)
             powerups.remove(powerup)
 
@@ -564,21 +748,15 @@ while running:
     if player.rect.colliderect(thief.rect):
         restart = show_end_screen("¡HAS ATRAPADO AL LADRÓN!")
         if restart:
-            # recargar nivel: preferir nivel personalizado si existe
-            if os.path.exists(custom_path):
-                try:
-                    platforms, obstacles, powerups, thief = load_level_from_file(custom_path)
-                except Exception:
-                    platforms, obstacles, powerups, thief = load_level()
-            else:
-                platforms, obstacles, powerups, thief = load_level()
-            # asegurar posición por defecto del ladrón al reiniciar
+            platforms, obstacles, powerups, thief = load_game_level()
+            player, camera = reset_game_state()
+            continue
+            camera = Camera(WIDTH, LEVEL_LENGTH)
+            # reiniciar música de fondo
             try:
-                thief.rect.topleft = (400, 390)
+                pygame.mixer.music.play(-1)
             except Exception:
                 pass
-            player = Player(50, 300)
-            camera = Camera(WIDTH, LEVEL_LENGTH)
             continue
         else:
             pygame.quit()
@@ -586,27 +764,19 @@ while running:
 
     # -------- CONDICIÓN DE DERROTA: ladrón llega al final --------
     if thief_escaped:
+        # detener la música de fondo
+        pygame.mixer.music.stop()
+        # reproducir sonido de game over
+        if gameover_sound:
+            gameover_sound.play()
         restart = show_end_screen("EL LADRÓN ESCAPÓ. FIN DE LA PARTIDA.")
         if restart:
-            # recargar nivel: preferir nivel personalizado si existe
-            if os.path.exists(custom_path):
-                try:
-                    platforms, obstacles, powerups, thief = load_level_from_file(custom_path)
-                except Exception:
-                    platforms, obstacles, powerups, thief = load_level()
-            else:
-                platforms, obstacles, powerups, thief = load_level()
-            # asegurar posición por defecto del ladrón al reiniciar
-            try:
-                thief.rect.topleft = (400, 390)
-            except Exception:
-                pass
-            player = Player(50, 300)
-            camera = Camera(WIDTH, LEVEL_LENGTH)
+            platforms, obstacles, powerups, thief = load_game_level()
+            player, camera = reset_game_state()
             continue
         else:
             pygame.quit()
             sys.exit()
 
-    # usar flip() con doble buffer; suele ser más estable en fullscreen
-    pygame.display.flip()
+    # presentar la pantalla virtual escalada
+    present_screen()

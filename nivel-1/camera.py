@@ -1,38 +1,45 @@
 import math
 
+# ---------------- CONFIGURACIÓN DE CÁMARA ----------------
+DEFAULT_SMOOTH_SPEED = 12.0  # Mayor valor = cámara más reactiva
 
 class Camera:
+    """Cámara con seguimiento suavizado framerate-independiente."""
+    
     def __init__(self, screen_width, level_width):
-        # usar float para offset interno para suavizado
-        self.offset_x = 0.0
+        self.offset_x = 0.0  # Usar float para suavizado preciso
         self.screen_width = screen_width
         self.level_width = level_width
-        # velocidad de suavizado (mayor = cámara más reactiva)
-        self.smooth_speed = 12.0
+        self.smooth_speed = DEFAULT_SMOOTH_SPEED
 
     def update(self, target, dt: float = 1/60):
-        """Actualizar la cámara para seguir al objetivo con suavizado.
+        """Actualiza la cámara para seguir al objetivo con suavizado.
 
-        target: objeto con `rect.centerx` (por ejemplo Player)
-        dt: tiempo en segundos transcurrido desde el último frame
+        Args:
+            target: Objeto con `rect.centerx` (ej. Player)
+            dt: Tiempo transcurrido en segundos desde el último frame
         """
-        # offset objetivo (float)
+        # Calcular offset objetivo
         target_offset = float(target.rect.centerx) - (self.screen_width / 2.0)
-
-        # límites del target_offset
-        min_off = 0.0
-        max_off = max(0.0, float(self.level_width - self.screen_width))
-        if target_offset < min_off:
-            target_offset = min_off
-        if target_offset > max_off:
-            target_offset = max_off
-
-        # suavizado exponencial dependiente de dt (framerate-independiente)
-        # alpha en (0,1): cuánto acercarse al objetivo este frame
+        
+        # Aplicar límites del nivel
+        min_offset = 0.0
+        max_offset = max(0.0, float(self.level_width - self.screen_width))
+        target_offset = max(min_offset, min(target_offset, max_offset))
+        
+        # Suavizado exponencial framerate-independiente
         alpha = 1.0 - math.exp(-self.smooth_speed * max(0.0, dt))
         self.offset_x += (target_offset - self.offset_x) * alpha
 
     def apply(self, rect):
-        # devolver un rect movido por el offset (usar rounding al blit para evitar jitter)
-        ox = int(round(self.offset_x))
-        return rect.move(-ox, 0)
+        """Aplica el offset de la cámara a un rect.
+        
+        Returns:
+            Nuevo rect desplazado por el offset de la cámara
+        """
+        offset_rounded = int(round(self.offset_x))
+        return rect.move(-offset_rounded, 0)
+    
+    def reset(self):
+        """Reinicia la posición de la cámara."""
+        self.offset_x = 0.0
