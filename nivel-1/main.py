@@ -603,7 +603,24 @@ def show_end_screen(message: str) -> bool:
     pulsa Escape.
     """
     button_w, button_h = 220, 50
-    button_rect = pygame.Rect((WIDTH - button_w) // 2, (HEIGHT // 2) + 40, button_w, button_h)
+    button_rect = pygame.Rect((WIDTH - button_w) // 2, (HEIGHT // 2) + 120, button_w, button_h)
+    
+    # Cargar imagen de nivel completado si es pantalla de victoria
+    victory_background = None
+    is_victory = "ATRAPADO" in message.upper()
+    
+    if is_victory:
+        try:
+            assets_dir = os.path.join(os.path.dirname(__file__), 'imagenes')
+            bg_path = os.path.join(assets_dir, 'nivel1completado.png')
+            if os.path.exists(bg_path):
+                victory_background = pygame.image.load(bg_path).convert()
+                victory_background = pygame.transform.scale(victory_background, (WIDTH, HEIGHT))
+                print(f"Imagen de victoria cargada: {bg_path}")
+            else:
+                print(f"Imagen de victoria no encontrada: {bg_path}")
+        except Exception as e:
+            print(f"Error cargando imagen de victoria: {e}")
 
     while True:
         CLOCK.tick(FPS)
@@ -619,16 +636,22 @@ def show_end_screen(message: str) -> bool:
                 if button_rect.collidepoint(convert_mouse_pos(event.pos)):
                     return True
 
-        # Fondo semitransparente
-        overlay = pygame.Surface((WIDTH, HEIGHT))
-        overlay.set_alpha(200)
-        overlay.fill((30, 30, 30))
-        SCREEN.blit(overlay, (0, 0))
+        # Mostrar fondo personalizado o overlay por defecto
+        if is_victory and victory_background:
+            # Mostrar imagen de victoria como fondo completo
+            SCREEN.blit(victory_background, (0, 0))
+        else:
+            # Fondo semitransparente por defecto
+            overlay = pygame.Surface((WIDTH, HEIGHT))
+            overlay.set_alpha(200)
+            overlay.fill((30, 30, 30))
+            SCREEN.blit(overlay, (0, 0))
 
-        # Mensaje centrado
-        text = BIG_FONT.render(message, True, (255, 255, 255))
-        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 20))
-        SCREEN.blit(text, text_rect)
+        # Mensaje centrado (solo para pantallas que no sean victoria)
+        if not (is_victory and victory_background):
+            text = BIG_FONT.render(message, True, (255, 255, 255))
+            text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 20))
+            SCREEN.blit(text, text_rect)
 
         # Botón
         pygame.draw.rect(SCREEN, (70, 130, 180), button_rect)
@@ -684,6 +707,10 @@ while running:
             except TypeError:
                 # plataformas estáticas no esperan argumentos
                 plat.update()
+                
+    # Actualizar powerups con efecto de flotación
+    for powerup in powerups:
+        powerup.update(dt)
 
     player.update(platforms, LEVEL_LENGTH)
     # Pasamos las plataformas y el jugador para que el ladrón ajuste su velocidad
