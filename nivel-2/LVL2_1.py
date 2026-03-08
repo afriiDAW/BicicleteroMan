@@ -764,7 +764,7 @@ def reiniciar_partida():
     tiempo_inicio = pygame.time.get_ticks()
     tiempo_pausa_acumulado = 0
     inicio_pausa = None
-    nivel_iniciado = False
+    nivel_iniciado = True
     cursor_visible = True
     pygame.mouse.set_visible(True)
     menu_pausa_activo = False
