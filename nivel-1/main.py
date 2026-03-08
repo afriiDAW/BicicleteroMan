@@ -597,16 +597,17 @@ camera = Camera(WIDTH, LEVEL_LENGTH)
 
 
 def show_end_screen(message: str) -> bool:
-    """Muestra una pantalla de fin con un botón de reinicio.
+    """Muestra una pantalla de fin con un botón de acción.
 
-    Devuelve True si el jugador pulsa Reiniciar, False si cierra la ventana o
-    pulsa Escape.
+    Para victoria: muestra botón "Ir al Nivel 2" y siempre devuelve True para continuar
+    Para derrota: muestra botón "Reiniciar" y permite elegir
     """
     button_w, button_h = 220, 50
     button_rect = pygame.Rect((WIDTH - button_w) // 2, (HEIGHT // 2) + 120, button_w, button_h)
     
     # Cargar imagen de nivel completado si es pantalla de victoria
     victory_background = None
+    gameover_background = None
     is_victory = "ATRAPADO" in message.upper()
     
     if is_victory:
@@ -621,6 +622,17 @@ def show_end_screen(message: str) -> bool:
                 print(f"Imagen de victoria no encontrada: {bg_path}")
         except Exception as e:
             print(f"Error cargando imagen de victoria: {e}")
+    else:
+        try:
+            assets_dir = os.path.join(os.path.dirname(__file__), 'imagenes')
+            go_path = os.path.join(assets_dir, 'gameover1.png')
+            if os.path.exists(go_path):
+                gameover_background = pygame.image.load(go_path).convert()
+                gameover_background = pygame.transform.scale(gameover_background, (WIDTH, HEIGHT))
+            else:
+                print(f"Imagen de gameover no encontrada: {go_path}")
+        except Exception as e:
+            print(f"Error cargando imagen de gameover: {e}")
 
     while True:
         CLOCK.tick(FPS)
@@ -630,7 +642,9 @@ def show_end_screen(message: str) -> bool:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     return False
-                if event.key == pygame.K_r:
+                # Para victoria: cualquier tecla va al nivel 2
+                # Para derrota: solo R reinicia
+                if is_victory or event.key == pygame.K_r:
                     return True
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if button_rect.collidepoint(convert_mouse_pos(event.pos)):
@@ -640,6 +654,9 @@ def show_end_screen(message: str) -> bool:
         if is_victory and victory_background:
             # Mostrar imagen de victoria como fondo completo
             SCREEN.blit(victory_background, (0, 0))
+        elif not is_victory and gameover_background:
+            # Mostrar imagen de game over como fondo completo
+            SCREEN.blit(gameover_background, (0, 0))
         else:
             # Fondo semitransparente por defecto
             overlay = pygame.Surface((WIDTH, HEIGHT))
@@ -647,19 +664,136 @@ def show_end_screen(message: str) -> bool:
             overlay.fill((30, 30, 30))
             SCREEN.blit(overlay, (0, 0))
 
-        # Mensaje centrado (solo para pantallas que no sean victoria)
-        if not (is_victory and victory_background):
+        # Mensaje centrado (solo para pantallas que no sean victoria ni gameover con imagen)
+        if not (is_victory and victory_background) and not (not is_victory and gameover_background):
             text = BIG_FONT.render(message, True, (255, 255, 255))
             text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 20))
             SCREEN.blit(text, text_rect)
 
-        # Botón
+        # Botón con texto apropiado
         pygame.draw.rect(SCREEN, (70, 130, 180), button_rect)
-        btn_text = BUTTON_FONT.render("Reiniciar (R)", True, (255, 255, 255))
+        if is_victory:
+            btn_text = BUTTON_FONT.render("Ir al Nivel 2", True, (255, 255, 255))
+        else:
+            btn_text = BUTTON_FONT.render("Reiniciar (R)", True, (255, 255, 255))
         btn_rect = btn_text.get_rect(center=button_rect.center)
         SCREEN.blit(btn_text, btn_rect)
 
         present_screen()
+
+# ---------------- MENÚ DE PAUSA ----------------
+pausa_activa = False
+indice_pausa = 0
+vol_musica = 0.7
+vol_efectos = 0.8
+musica_silenciada = False
+efectos_silenciados = False
+NUM_OPCIONES_PAUSA = 6
+
+def aplicar_vol_musica():
+    v = 0.0 if musica_silenciada else vol_musica
+    try:
+        pygame.mixer.music.set_volume(v)
+    except Exception:
+        pass
+
+def aplicar_vol_efectos():
+    vol = 0.0 if efectos_silenciados else vol_efectos
+    for s in [jump_sound, obstacle_sound, gameover_sound, powerup_sound]:
+        if s:
+            s.set_volume(vol)
+
+def get_opciones_pausa():
+    m_str = "Silenciada" if musica_silenciada else f"{int(vol_musica * 100)}%"
+    e_str = "Silenciados" if efectos_silenciados else f"{int(vol_efectos * 100)}%"
+    fullscreen = "Completa" if PHYSICAL_SCREEN.get_flags() & pygame.FULLSCREEN else "Ventana"
+    return [
+        "Continuar",
+        f"Vol. Música: {m_str}",
+        f"Vol. Efectos: {e_str}",
+        f"Pantalla: {fullscreen}",
+        "Reiniciar nivel",
+        "Salir",
+    ]
+
+def draw_pause_menu():
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 160))
+    SCREEN.blit(overlay, (0, 0))
+
+    fuente_titulo = pygame.font.Font(None, 80)
+    fuente_menu = pygame.font.Font(None, 50)
+    fuente_ayuda = pygame.font.Font(None, 28)
+
+    titulo = fuente_titulo.render("PAUSA", True, (255, 255, 255))
+    SCREEN.blit(titulo, titulo.get_rect(center=(WIDTH // 2, int(HEIGHT * 0.15))))
+
+    opciones = get_opciones_pausa()
+    start_y = int(HEIGHT * 0.35)
+    spacing = int(HEIGHT * 0.1)
+    for i, texto in enumerate(opciones):
+        color = (255, 230, 120) if i == indice_pausa else (255, 255, 255)
+        linea = fuente_menu.render(texto, True, color)
+        SCREEN.blit(linea, linea.get_rect(center=(WIDTH // 2, start_y + i * spacing)))
+
+    ayuda = fuente_ayuda.render("↑↓ navegar  |  ←→ ajustar volumen  |  Enter confirmar  |  Esc/P continuar", True, (200, 200, 200))
+    SCREEN.blit(ayuda, ayuda.get_rect(center=(WIDTH // 2, HEIGHT - 50)))
+
+aplicar_vol_musica()
+aplicar_vol_efectos()
+
+# ---------------- PANTALLA DE DIÁLOGO INICIAL ----------------
+def show_intro_screen():
+    """Muestra dialogo1.png a pantalla completa con texto parpadeante. Sale al pulsar Enter."""
+    assets_dir = os.path.join(os.path.dirname(__file__), 'imagenes')
+    dialogo_img = None
+    try:
+        dialogo_path = os.path.join(assets_dir, 'dialogo1.png')
+        if os.path.exists(dialogo_path):
+            dialogo_img = pygame.image.load(dialogo_path).convert()
+            dialogo_img = pygame.transform.scale(dialogo_img, (WIDTH, HEIGHT))
+    except Exception as e:
+        print(f"Error cargando dialogo1.png: {e}")
+
+    fuente_parpadeo = pygame.font.Font(None, 42)
+    parpadeo_visible = True
+    parpadeo_timer = 0
+    PARPADEO_INTERVALO = 500  # ms
+
+    while True:
+        dt_ms = CLOCK.tick(FPS)
+        parpadeo_timer += dt_ms
+        if parpadeo_timer >= PARPADEO_INTERVALO:
+            parpadeo_visible = not parpadeo_visible
+            parpadeo_timer = 0
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    return
+                if event.key == pygame.K_ESCAPE:
+                    return
+
+        if dialogo_img:
+            SCREEN.blit(dialogo_img, (0, 0))
+        else:
+            SCREEN.fill((20, 20, 20))
+
+        if parpadeo_visible:
+            texto = fuente_parpadeo.render("Pulsa Enter para comenzar", True, (255, 255, 255))
+            margen = 30
+            pos = (WIDTH - texto.get_width() - margen, HEIGHT - texto.get_height() - margen)
+            # sombra para legibilidad
+            sombra = fuente_parpadeo.render("Pulsa Enter para comenzar", True, (0, 0, 0))
+            SCREEN.blit(sombra, (pos[0] + 2, pos[1] + 2))
+            SCREEN.blit(texto, pos)
+
+        present_screen()
+
+show_intro_screen()
 
 # ---------------- BUCLE PRINCIPAL ----------------
 running = True
@@ -676,26 +810,75 @@ while running:
     # -------- EVENTOS --------
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            print("Nivel 1 abandonado")
             pygame.quit()
-            sys.exit()
-        # abrir diseñador con Shift+J
+            sys.exit(1)  # Código 1 indica abandono
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_j and (event.mod & pygame.KMOD_SHIFT):
-                # pausa el juego y abre la herramienta de diseño
-                show_level_designer(platforms, obstacles, powerups, thief, player, camera)
-            # toggle música con tecla M
-            if event.key == pygame.K_m:
-                if pygame.mixer.music.get_busy():
+            # Toggle pausa con ESC o P
+            if event.key in (pygame.K_ESCAPE, pygame.K_p):
+                pausa_activa = not pausa_activa
+                if pausa_activa:
                     pygame.mixer.music.pause()
                 else:
                     pygame.mixer.music.unpause()
-            # alternar fullscreen con F11
-            if event.key == pygame.K_F11:
-                toggle_fullscreen()
-            # Escape: volver a modo ventana si está en fullscreen
-            if event.key == pygame.K_ESCAPE:
-                if SCREEN.get_flags() & pygame.FULLSCREEN:
+            # Navegación en el menú de pausa
+            elif pausa_activa:
+                if event.key in (pygame.K_UP, pygame.K_w):
+                    indice_pausa = (indice_pausa - 1) % NUM_OPCIONES_PAUSA
+                elif event.key in (pygame.K_DOWN, pygame.K_s):
+                    indice_pausa = (indice_pausa + 1) % NUM_OPCIONES_PAUSA
+                elif event.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                    delta = 0.1 if event.key == pygame.K_RIGHT else -0.1
+                    if indice_pausa == 1:  # Vol. Música
+                        vol_musica = max(0.0, min(1.0, round(vol_musica + delta, 1)))
+                        musica_silenciada = vol_musica == 0.0
+                        aplicar_vol_musica()
+                    elif indice_pausa == 2:  # Vol. Efectos
+                        vol_efectos = max(0.0, min(1.0, round(vol_efectos + delta, 1)))
+                        efectos_silenciados = vol_efectos == 0.0
+                        aplicar_vol_efectos()
+                elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                    if indice_pausa == 0:  # Continuar
+                        pausa_activa = False
+                        pygame.mixer.music.unpause()
+                    elif indice_pausa == 1:  # Vol. Música: silenciar/activar
+                        musica_silenciada = not musica_silenciada
+                        aplicar_vol_musica()
+                        if not musica_silenciada:
+                            pygame.mixer.music.unpause()
+                    elif indice_pausa == 2:  # Vol. Efectos: silenciar/activar
+                        efectos_silenciados = not efectos_silenciados
+                        aplicar_vol_efectos()
+                    elif indice_pausa == 3:  # Pantalla
+                        toggle_fullscreen()
+                    elif indice_pausa == 4:  # Reiniciar nivel
+                        platforms, obstacles, powerups, thief = load_game_level()
+                        player, camera = reset_game_state()
+                        pausa_activa = False
+                        indice_pausa = 0
+                    elif indice_pausa == 5:  # Salir
+                        print("Nivel 1 abandonado desde pausa")
+                        pygame.quit()
+                        sys.exit(1)
+            else:
+                # abrir diseñador con Shift+J (solo fuera de pausa)
+                if event.key == pygame.K_j and (event.mod & pygame.KMOD_SHIFT):
+                    show_level_designer(platforms, obstacles, powerups, thief, player, camera)
+                # toggle música con tecla M
+                if event.key == pygame.K_m:
+                    if pygame.mixer.music.get_busy():
+                        pygame.mixer.music.pause()
+                    else:
+                        pygame.mixer.music.unpause()
+                # alternar fullscreen con F11
+                if event.key == pygame.K_F11:
                     toggle_fullscreen()
+
+    # Si el juego está pausado, solo dibujar el menú de pausa y continuar
+    if pausa_activa:
+        draw_pause_menu()
+        present_screen()
+        continue
 
     # -------- UPDATE --------
     # Actualizar plataformas móviles antes del jugador para que las colisiones
@@ -773,21 +956,12 @@ while running:
 
     # -------- CONDICIÓN DE VICTORIA --------
     if player.rect.colliderect(thief.rect):
-        restart = show_end_screen("¡HAS ATRAPADO AL LADRÓN!")
-        if restart:
-            platforms, obstacles, powerups, thief = load_game_level()
-            player, camera = reset_game_state()
-            continue
-            camera = Camera(WIDTH, LEVEL_LENGTH)
-            # reiniciar música de fondo
-            try:
-                pygame.mixer.music.play(-1)
-            except Exception:
-                pass
-            continue
-        else:
-            pygame.quit()
-            sys.exit()
+        # Mostrar pantalla de victoria
+        show_end_screen("¡HAS ATRAPADO AL LADRÓN!")
+        # Siempre ir al nivel 2 después de completar exitosamente
+        print("¡Nivel 1 completado exitosamente! Yendo al nivel 2...")
+        pygame.quit()
+        sys.exit(0)  # Código 0 indica éxito, ir al nivel 2
 
     # -------- CONDICIÓN DE DERROTA: ladrón llega al final --------
     if thief_escaped:
@@ -802,8 +976,10 @@ while running:
             player, camera = reset_game_state()
             continue
         else:
+            # Nivel fallado
+            print("Nivel 1 fallado o abandonado")
             pygame.quit()
-            sys.exit()
+            sys.exit(1)  # Código 1 indica fallo
 
     # presentar la pantalla virtual escalada
     present_screen()
